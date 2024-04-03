@@ -1,8 +1,7 @@
-package RapidWeb.server;
+package RapidJWeb.server;
 
-import RapidWeb.http.HttpRequest;
-import RapidWeb.http.HttpResponse;
-import com.sun.net.httpserver.Headers;
+import RapidJWeb.http.HttpRequest;
+import RapidJWeb.http.HttpResponse;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 

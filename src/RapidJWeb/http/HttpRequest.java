@@ -1,6 +1,4 @@
-package RapidWeb.http;
-
-import com.sun.net.httpserver.Headers;
+package RapidJWeb.http;
 
 import java.util.Map;
 

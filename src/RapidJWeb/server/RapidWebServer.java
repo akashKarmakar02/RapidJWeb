@@ -1,7 +1,7 @@
-package RapidWeb.server;
+package RapidJWeb.server;
 
-import RapidWeb.http.HttpRequest;
-import RapidWeb.http.HttpResponse;
+import RapidJWeb.http.HttpRequest;
+import RapidJWeb.http.HttpResponse;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.*;

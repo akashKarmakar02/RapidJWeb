@@ -35,9 +35,17 @@ public class RapidWebServer {
 
     public void get(String route, BiConsumer<HttpRequest, HttpResponse> handler) {
         if (routeHandlerMap.containsKey(route)) {
-            // TODO: handle adding to existing handler
+            routeHandlerMap.put(route, routeHandlerMap.get(route).get(handler));
         } else {
-            routeHandlerMap.put(route, new RouteHandler(handler, route));
+            routeHandlerMap.put(route, RouteHandler.create(route).get(handler));
+        }
+    }
+
+    public void post(String route, BiConsumer<HttpRequest, HttpResponse> handler) {
+        if (routeHandlerMap.containsKey(route)) {
+            routeHandlerMap.put(route, routeHandlerMap.get(route).post(handler));
+        } else {
+            routeHandlerMap.put(route, RouteHandler.create(route).post(handler));
         }
     }
 

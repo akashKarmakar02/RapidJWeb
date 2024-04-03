@@ -7,19 +7,36 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.BiConsumer;
 
 import static java.lang.System.out;
 
 class RouteHandler implements HttpHandler {
 
-    private final BiConsumer<HttpRequest, HttpResponse> getHandler;
+    private BiConsumer<HttpRequest, HttpResponse> getHandler;
+    private BiConsumer<HttpRequest, HttpResponse> postHandler;
     private final String route;
 
-    public RouteHandler(BiConsumer<HttpRequest, HttpResponse> getHandler, String route) {
-        this.getHandler = getHandler;
+    private RouteHandler(String route) {
         this.route = route;
+    }
+
+    public RouteHandler get(BiConsumer<HttpRequest, HttpResponse> handler) {
+        this.getHandler = handler;
+        return this;
+    }
+
+    public RouteHandler post(BiConsumer<HttpRequest, HttpResponse> handler) {
+        this.postHandler = handler;
+        return this;
+    }
+
+    public static RouteHandler create(String route) {
+        return new RouteHandler(route);
     }
 
     @Override
@@ -29,18 +46,23 @@ class RouteHandler implements HttpHandler {
         }
 
         if (exchange.getRequestMethod().equalsIgnoreCase("POST")) {
-            handlePostRequest(exchange);
+            if (postHandler == null) {
+                handleMethodNotAllowed(exchange);
+            } else {
+                handlePostRequest(exchange);
+            }
         } else {
-            handleGetRequest(exchange);
+            if (getHandler == null) {
+                handleMethodNotAllowed(exchange);
+            } else {
+                handleGetRequest(exchange);
+            }
         }
     }
 
     private void handleGetRequest(HttpExchange exchange) throws IOException {
-        Headers header = exchange.getRequestHeaders();
 
-        var httpRequest = new HttpRequest(
-                header
-        );
+        var httpRequest = new HttpRequest();
 
         var httpResponse = new HttpResponse();
 
@@ -55,22 +77,32 @@ class RouteHandler implements HttpHandler {
     }
 
     private void handlePostRequest(HttpExchange exchange) throws IOException {
-        StringBuilder requestBody = new StringBuilder();
-        InputStream input = exchange.getRequestBody();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(input));
+        var inputStream = exchange.getRequestBody();
+        Map<String, Object> postData = new HashMap<>();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         String line;
         while ((line = reader.readLine()) != null) {
-            requestBody.append(line);
+            String[] parts = line.split("=");
+            if (parts.length == 2) {
+                String key = parts[0];
+                String value = java.net.URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
+                postData.put(key, value);
+            }
         }
         reader.close();
 
-        // Now you have the request body in requestBody
-        String responseData = "Received POST request with data: " + requestBody;
+        var httpRequest = new HttpRequest(postData);
 
-        exchange.sendResponseHeaders(200, responseData.getBytes().length);
+        var httpResponse = new HttpResponse();
+
+        postHandler.accept(httpRequest, httpResponse);
+
+        String response = httpResponse.getResponse();
+        exchange.sendResponseHeaders(200, response.getBytes().length);
         OutputStream os = exchange.getResponseBody();
-        os.write(responseData.getBytes());
+        os.write(response.getBytes());
         os.close();
+        out.println(new Date() + " GET: " + exchange.getRequestURI().toString() + " " + exchange.getResponseCode());
     }
 
     private void handleNotFound(HttpExchange exchange) throws IOException {
@@ -81,5 +113,14 @@ class RouteHandler implements HttpHandler {
         os.write(response.getBytes());
         os.close();
         out.println(new Date() + " GET: " + exchange.getRequestURI().toString() + " " + exchange.getResponseCode());
+    }
+
+    private void handleMethodNotAllowed(HttpExchange exchange) throws IOException {
+        int status = 405;
+        String response = "405 Method Not Allowed";
+        exchange.sendResponseHeaders(status, response.getBytes().length);
+        OutputStream os = exchange.getResponseBody();
+        os.write(response.getBytes());
+        os.close();
     }
 }

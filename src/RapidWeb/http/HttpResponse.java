@@ -16,17 +16,37 @@ public class HttpResponse {
     private String response;
     private int status;
 
-    public void render(String template) {
+    public void render(String template, Object data) {
         String filePath = template + ".html";
 
         try {
             Path path = Paths.get("src/templates/" + filePath);
-            var list = extractVariables(Files.readString(path));
-            out.println(list);
-            this.response = Files.readString(path);
+            String templateContent = Files.readString(path);
+
+            List<String> variables = extractVariables(templateContent);
+
+            for (String variable : variables) {
+                String value = getValueFromObject(data, variable);
+                templateContent = templateContent.replace("{{ " + variable + " }}", value);
+            }
+
+            // Set the response
+            this.response = templateContent;
         } catch (IOException e) {
             this.response = "<h1>Template name is invalid " + filePath + " </h1>";
             out.println(e.getMessage());
+        }
+    }
+
+    private String getValueFromObject(Object data, String variable) {
+        try {
+            var field = data.getClass().getDeclaredField(variable);
+            out.println(field);
+            field.setAccessible(true);
+            return field.get(data).toString();
+        } catch (Exception e) {
+            out.println(e);
+            return "null";
         }
     }
 

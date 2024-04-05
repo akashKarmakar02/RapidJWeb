@@ -6,17 +6,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
 
 public class HttpResponse {
 
     private String response;
     private int status;
 
-    private DjangoTemplating templatingEngine;
+    private final DjangoTemplating templatingEngine;
 
     public HttpResponse() {
         templatingEngine = new DjangoTemplating();
@@ -38,33 +35,11 @@ public class HttpResponse {
         }
     }
 
-    private String getValueFromObject(Object data, String variable) {
-        try {
-            var field = data.getClass().getDeclaredField(variable);
-            field.setAccessible(true);
-            return field.get(data).toString();
-        } catch (Exception e) {
-            return "null";
-        }
-    }
-
-
-    private List<String> extractVariables(String template) {
-        List<String> variables = new ArrayList<>();
-        Pattern pattern = Pattern.compile("\\{\\{\\s*(.*?)\\s*\\}\\}");
-        Matcher matcher = pattern.matcher(template);
-        while (matcher.find()) {
-            String variable = matcher.group(1);
-            variables.add(variable.trim());
-        }
-
-        return variables;
-    }
-
     public void setResponse(String response) {
         this.response = response;
     }
 
+    @SuppressWarnings("unused")
     public HttpResponse status(int status) {
         this.status = status;
         return this;
@@ -74,6 +49,7 @@ public class HttpResponse {
         return response;
     }
 
+    @SuppressWarnings("unused")
     public int getStatus() {
         return status;
     }

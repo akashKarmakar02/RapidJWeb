@@ -6,7 +6,6 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static java.lang.System.out;
 
 public class DjangoTemplating {
 
@@ -47,7 +46,7 @@ public class DjangoTemplating {
     }
 
     public String renderConditionalBlocks(String htmlContent, Object data) {
-        Pattern pattern = Pattern.compile("\\{%\\s*if\\s+(\\w+)\\s*(>=|<=|>|<|==)\\s*(?:\"(\\w+)\"|([^\"\\s]+))\\s*%}(.*?)\\{%\\s*endif\\s*%}", Pattern.DOTALL);
+        Pattern pattern = Pattern.compile("\\{%\\s*if\\s+(\\w+)\\s*(>=|<=|>|<|==)\\s*(?:\"(\\w+)\"|([^\"\\s]+))\\s*%}(.*?)(?:\\{%\\s*else\\s*%}(.*?))?\\{%\\s*endif\\s*%}", Pattern.DOTALL);
         Matcher matcher = pattern.matcher(htmlContent);
         StringBuilder result = new StringBuilder();
 
@@ -62,7 +61,8 @@ public class DjangoTemplating {
             } else {
                 valueString = "\"" + valueString + "\"";
             }
-            String content = matcher.group(5);
+            String ifContent = matcher.group(5);
+            String elseContent = matcher.group(6);
 
             var variableValue = getValueFromObject(data, variable);
 
@@ -71,14 +71,13 @@ public class DjangoTemplating {
             if (valueInt.isEmpty()) {
                 toRender = evaluateCondition(operator, valueString, variableValue);
             } else {
-                out.println("Int");
                 toRender = evaluateCondition(operator, valueInt.get(), variableValue);
             }
 
             if (toRender) {
-                matcher.appendReplacement(result, content);
+                matcher.appendReplacement(result, ifContent);
             } else {
-                matcher.appendReplacement(result, "");
+                matcher.appendReplacement(result, elseContent);
             }
         }
 

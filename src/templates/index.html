@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Home</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="max-w-7xl mx-auto mt-8">
+    <nav class="flex justify-between">
+        <a href="/" class="text-2xl">My Page</a>
+        <a href="/about" class="text-blue-700 underline underline-offset-2">About</a>
+    </nav>
+    <h1 class="mt-4">Hello this is {{ name }}</h1>
+    <p>Age: {{ age }}</p>
+
+    {% if age == "21" %}
+        <p>Hello</p>
+    {% endif %}
+</body>
+</html>

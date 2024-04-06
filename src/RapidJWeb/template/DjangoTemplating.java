@@ -6,6 +6,8 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static java.lang.System.out;
+
 
 public class DjangoTemplating {
 
@@ -13,7 +15,9 @@ public class DjangoTemplating {
 
         List<String> variables = extractVariables(template);
 
-            template = renderConditionalBlocks(template, data);
+        template = renderForLoop(template, data);
+        template = renderConditionalBlocks(template, data);
+
 
         for (String variable : variables) {
             Object value = getValueFromObject(data, variable);
@@ -45,38 +49,52 @@ public class DjangoTemplating {
         return variables;
     }
 
-    public String renderConditionalBlocks(String htmlContent, Object data) {
-        Pattern pattern = Pattern.compile("\\{%\\s*if\\s+(\\w+)\\s*(>=|<=|>|<|==)\\s*(?:\"(\\w+)\"|([^\"\\s]+))\\s*%}(.*?)(?:\\{%\\s*else\\s*%}(.*?))?\\{%\\s*endif\\s*%}", Pattern.DOTALL);
+    private String renderConditionalBlocks(String htmlContent, Object data) {
+        Pattern pattern = Pattern.compile("\\{%\\s*if\\s+(?:\"(\\w+)\"|([^\"\\s]+))\\s*(>=|<=|>|<|==)\\s*(?:\"(\\w+)\"|([^\"\\s]+))\\s*%}(.*?)(?:\\{%\\s*else\\s*%}(.*?))?\\{%\\s*endif\\s*%}", Pattern.DOTALL);
         Matcher matcher = pattern.matcher(htmlContent);
         StringBuilder result = new StringBuilder();
 
         // Iterate through matches and evaluate conditions
         while (matcher.find()) {
-            String variable = matcher.group(1);
-            String operator = matcher.group(2);
-            String valueString = matcher.group(3);
+            Optional<String> value = Optional.empty();
+            String variable = matcher.group(2);
+            String operator = matcher.group(3);
+            String valueString = matcher.group(4);
             Optional<Integer> valueInt = Optional.empty();
             if (valueString == null) {
-                valueInt = Optional.of(Integer.parseInt(matcher.group(4)));
-            } else {
-                valueString = "\"" + valueString + "\"";
+                valueInt = Optional.of(Integer.parseInt(matcher.group(5)));
+            } if (variable == null) {
+                value = Optional.of(matcher.group(1));
             }
-            String ifContent = matcher.group(5);
-            String elseContent = matcher.group(6);
+            out.println("Value: " + value + "\nVariable: " + variable + "\n");
 
-            var variableValue = getValueFromObject(data, variable);
+            String ifContent = matcher.group(6);
+            String elseContent = matcher.group(7);
+
+            Object variableValue;
+
+            if (value.isEmpty()) {
+                out.println("Here\n");
+                variableValue = getValueFromObject(data, variable);
+            } else {
+                variableValue = value.get();
+            }
 
             boolean toRender;
 
-            if (valueInt.isEmpty()) {
-                toRender = evaluateCondition(operator, valueString, variableValue);
-            } else {
-                toRender = evaluateCondition(operator, valueInt.get(), variableValue);
-            }
+            toRender = valueInt.map(
+                    integer -> evaluateCondition(operator, integer, variableValue))
+                    .orElseGet(() -> evaluateCondition(operator, valueString, variableValue)
+            );
 
+            if (elseContent == null) {
+                elseContent = "";
+            }
+            out.println(ifContent);
             if (toRender) {
                 matcher.appendReplacement(result, ifContent);
-            } else {
+            }
+            else {
                 matcher.appendReplacement(result, elseContent);
             }
         }
@@ -86,6 +104,39 @@ public class DjangoTemplating {
         return result.toString();
     }
 
+    private String renderForLoop(String htmlContent, Object data) {
+        Pattern pattern = Pattern.compile("\\{%\\s*for\\s+(\\w+)\\s+in\\s+(.*?)\\s*%}(.*?)\\{%\\s*endfor\\s*%}", Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(htmlContent);
+        StringBuilder result = new StringBuilder();
+        String loopVariable;
+
+        while (matcher.find()) {
+            loopVariable = matcher.group(1);
+            String iterableName = matcher.group(2);
+            String forContent = matcher.group(3);
+
+            Object iterableObject = getValueFromObject(data, iterableName);
+
+            if (iterableObject instanceof Object[] array) {
+                StringBuilder loopResult = new StringBuilder();
+                for (Object item : array) {
+                    loopResult.append(renderForLoopContent(forContent, loopVariable, item));
+                }
+                matcher.appendReplacement(result, loopResult.toString());
+            } else {
+                throw new IllegalArgumentException("Unsupported iterable type");
+            }
+        }
+
+        matcher.appendTail(result);
+        return result.toString();
+    }
+
+    private String renderForLoopContent(String forContent, String loopVariable, Object item) {
+        forContent = forContent.replaceAll("\\{\\{\\s*" + loopVariable + "\\s*}}", item.toString());
+        forContent = forContent.replaceAll(loopVariable,"\"" + item + "\"");
+        return forContent;
+    }
 
 
     public static boolean evaluateCondition(String operator, Object value1, Object value2) {
